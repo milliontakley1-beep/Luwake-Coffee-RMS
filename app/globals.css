@@ -1,0 +1,168 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Luwak Coffee Addis Ababa Brand Colors */
+  --coffee-brown: #3E2723;
+  --coffee-brown-light: #5D4037;
+  --gold-accent: #D4AF37;
+  --gold-accent-light: #E8C547;
+  --cream: #F5F5DC;
+  --warm-white: #FAFAF8;
+  
+  --background: #FAFAF8;
+  --foreground: #3E2723;
+  --card: #FFFFFF;
+  --card-foreground: #3E2723;
+  --popover: #FFFFFF;
+  --popover-foreground: #3E2723;
+  --primary: #3E2723;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F5DC;
+  --secondary-foreground: #3E2723;
+  --muted: #F5F5DC;
+  --muted-foreground: #5D4037;
+  --accent: #D4AF37;
+  --accent-foreground: #3E2723;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #E5E5E5;
+  --input: #E5E5E5;
+  --ring: #D4AF37;
+  --chart-1: #3E2723;
+  --chart-2: #D4AF37;
+  --chart-3: #5D4037;
+  --chart-4: #8D6E63;
+  --chart-5: #A1887F;
+  --radius: 0.625rem;
+  --sidebar: #3E2723;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #D4AF37;
+  --sidebar-primary-foreground: #3E2723;
+  --sidebar-accent: #5D4037;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #5D4037;
+  --sidebar-ring: #D4AF37;
+}
+
+.dark {
+  --background: #1A1A1A;
+  --foreground: #F5F5DC;
+  --card: #2D2D2D;
+  --card-foreground: #F5F5DC;
+  --popover: #2D2D2D;
+  --popover-foreground: #F5F5DC;
+  --primary: #D4AF37;
+  --primary-foreground: #3E2723;
+  --secondary: #3E2723;
+  --secondary-foreground: #F5F5DC;
+  --muted: #3E2723;
+  --muted-foreground: #A1887F;
+  --accent: #D4AF37;
+  --accent-foreground: #3E2723;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #3E2723;
+  --input: #3E2723;
+  --ring: #D4AF37;
+  --chart-1: #D4AF37;
+  --chart-2: #8D6E63;
+  --chart-3: #A1887F;
+  --chart-4: #BCAAA4;
+  --chart-5: #D7CCC8;
+  --sidebar: #1A1A1A;
+  --sidebar-foreground: #F5F5DC;
+  --sidebar-primary: #D4AF37;
+  --sidebar-primary-foreground: #3E2723;
+  --sidebar-accent: #3E2723;
+  --sidebar-accent-foreground: #F5F5DC;
+  --sidebar-border: #3E2723;
+  --sidebar-ring: #D4AF37;
+}
+
+@theme inline {
+  --font-sans: 'Inter', 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Custom Luwak Coffee colors */
+  --color-coffee: #3E2723;
+  --color-coffee-light: #5D4037;
+  --color-gold: #D4AF37;
+  --color-gold-light: #E8C547;
+  --color-cream: #F5F5DC;
+  --color-warm-white: #FAFAF8;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar for POS */
+.pos-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pos-scrollbar::-webkit-scrollbar-track {
+  background: var(--cream);
+  border-radius: 3px;
+}
+
+.pos-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--coffee-brown-light);
+  border-radius: 3px;
+}
+
+.pos-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--coffee-brown);
+}
+
+/* Touch-friendly styles for tablet */
+@media (pointer: coarse) {
+  button, .touchable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
