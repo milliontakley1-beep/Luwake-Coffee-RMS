@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
+import { QRCodeSVG } from "qrcode.react"
 import { 
   ShoppingCart, 
   Package, 
@@ -19,12 +20,9 @@ import {
   Trash2,
   Receipt,
   CheckCircle2,
-  Clock,
   User,
   Users,
-  Settings,
   ChevronDown,
-  Edit3,
   AlertTriangle,
   TrendingDown,
   TrendingUp,
@@ -33,14 +31,24 @@ import {
   Shield,
   LogOut,
   Search,
-  Save,
   PlusCircle,
   WifiOff,
   RefreshCw,
-  Loader2
+  Loader2,
+  QrCode,
+  DollarSign,
+  Calendar,
+  Download,
+  RotateCcw,
+  Edit3,
+  Phone,
+  Mail,
+  MapPin,
+  Building,
+  ChevronRight,
+  Home
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 // Types
 interface Product {
@@ -73,6 +81,9 @@ interface Employee {
   phone: string
   status: "active" | "inactive"
   shift: "morning" | "afternoon" | "evening"
+  salary: number
+  bankAccount: string
+  hireDate: string
 }
 
 interface InventoryItem {
@@ -84,6 +95,20 @@ interface InventoryItem {
   maxStock: number
   costPerUnit: number
   supplier: string
+}
+
+interface Supplier {
+  id: string
+  name: string
+  contact: string
+  email: string
+  phone: string
+  address: string
+  items: string
+  lastOrder: string
+  status: "Active" | "Inactive"
+  totalOrders: number
+  paymentTerms: string
 }
 
 type UserRole = "admin" | "cashier" | "waiter" | "inventory"
@@ -126,12 +151,12 @@ const initialProducts: Product[] = [
 ]
 
 const initialEmployees: Employee[] = [
-  { id: "e1", name: "Abebe Kebede", role: "admin", email: "abebe@luwak.et", phone: "+251911234567", status: "active", shift: "morning" },
-  { id: "e2", name: "Sara Tesfaye", role: "cashier", email: "sara@luwak.et", phone: "+251912345678", status: "active", shift: "morning" },
-  { id: "e3", name: "Dawit Haile", role: "cashier", email: "dawit@luwak.et", phone: "+251913456789", status: "active", shift: "afternoon" },
-  { id: "e4", name: "Meron Tadesse", role: "waiter", email: "meron@luwak.et", phone: "+251914567890", status: "active", shift: "morning" },
-  { id: "e5", name: "Yonas Bekele", role: "waiter", email: "yonas@luwak.et", phone: "+251915678901", status: "inactive", shift: "evening" },
-  { id: "e6", name: "Hana Girma", role: "inventory", email: "hana@luwak.et", phone: "+251916789012", status: "active", shift: "morning" },
+  { id: "e1", name: "Abebe Kebede", role: "admin", email: "abebe@luwak.et", phone: "+251911234567", status: "active", shift: "morning", salary: 25000, bankAccount: "CBE-1000234567", hireDate: "2022-01-15" },
+  { id: "e2", name: "Sara Tesfaye", role: "cashier", email: "sara@luwak.et", phone: "+251912345678", status: "active", shift: "morning", salary: 12000, bankAccount: "CBE-1000345678", hireDate: "2022-06-01" },
+  { id: "e3", name: "Dawit Haile", role: "cashier", email: "dawit@luwak.et", phone: "+251913456789", status: "active", shift: "afternoon", salary: 12000, bankAccount: "BOA-2000456789", hireDate: "2023-02-15" },
+  { id: "e4", name: "Meron Tadesse", role: "waiter", email: "meron@luwak.et", phone: "+251914567890", status: "active", shift: "morning", salary: 8000, bankAccount: "CBE-1000567890", hireDate: "2023-04-10" },
+  { id: "e5", name: "Yonas Bekele", role: "waiter", email: "yonas@luwak.et", phone: "+251915678901", status: "inactive", shift: "evening", salary: 8000, bankAccount: "DBE-3000678901", hireDate: "2023-05-20" },
+  { id: "e6", name: "Hana Girma", role: "inventory", email: "hana@luwak.et", phone: "+251916789012", status: "active", shift: "morning", salary: 15000, bankAccount: "CBE-1000789012", hireDate: "2022-09-01" },
 ]
 
 const initialInventory: InventoryItem[] = [
@@ -145,6 +170,15 @@ const initialInventory: InventoryItem[] = [
   { id: "inv8", name: "Whipped Cream", stock: 15, unit: "cans", minStock: 10, maxStock: 40, costPerUnit: 85, supplier: "Addis Dairy Co." },
   { id: "inv9", name: "Paper Cups (M)", stock: 350, unit: "pcs", minStock: 200, maxStock: 1000, costPerUnit: 2.5, supplier: "Merkato Supplies" },
   { id: "inv10", name: "Paper Cups (L)", stock: 180, unit: "pcs", minStock: 150, maxStock: 800, costPerUnit: 3.5, supplier: "Merkato Supplies" },
+]
+
+const initialSuppliers: Supplier[] = [
+  { id: "sup1", name: "Kaldi's Farm Supply", contact: "Alemayehu Tadesse", email: "sales@kaldisfarm.et", phone: "+251911001122", address: "Bole, Addis Ababa", items: "Coffee Beans", lastOrder: "Dec 18, 2024", status: "Active", totalOrders: 45000, paymentTerms: "Net 30" },
+  { id: "sup2", name: "Addis Dairy Co.", contact: "Tigist Hailu", email: "orders@addisdairy.et", phone: "+251922112233", address: "Kirkos, Addis Ababa", items: "Milk, Cream", lastOrder: "Dec 20, 2024", status: "Active", totalOrders: 8500, paymentTerms: "Net 15" },
+  { id: "sup3", name: "Merkato Bakery Dist.", contact: "Solomon Bekele", email: "info@merkatobakery.et", phone: "+251933223344", address: "Merkato, Addis Ababa", items: "Pastries", lastOrder: "Dec 21, 2024", status: "Active", totalOrders: 3200, paymentTerms: "COD" },
+  { id: "sup4", name: "Import House Addis", contact: "Daniel Mekonnen", email: "contact@importhouse.et", phone: "+251944334455", address: "Sarbet, Addis Ababa", items: "Syrups, Extracts", lastOrder: "Dec 15, 2024", status: "Active", totalOrders: 12800, paymentTerms: "Net 45" },
+  { id: "sup5", name: "Ethiopian Sugar Corp", contact: "Rahel Desta", email: "supply@ethsugar.et", phone: "+251955445566", address: "Wonji, Ethiopia", items: "Sugar", lastOrder: "Dec 19, 2024", status: "Active", totalOrders: 2100, paymentTerms: "Net 30" },
+  { id: "sup6", name: "Merkato Supplies", contact: "Getachew Alemu", email: "orders@merkatosupplies.et", phone: "+251966556677", address: "Merkato, Addis Ababa", items: "Packaging, Cups", lastOrder: "Dec 17, 2024", status: "Inactive", totalOrders: 4500, paymentTerms: "Net 15" },
 ]
 
 const categories = ["Signature Luwak", "Espresso Bar", "Pastries", "Breakfast"]
@@ -170,7 +204,7 @@ const roleIcons: Record<UserRole, React.ReactNode> = {
   inventory: <Package className="w-4 h-4" />
 }
 
-// Splash Screen Component
+// Splash Screen Component - Faster Animation
 function SplashScreen({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0)
   const [fadeOut, setFadeOut] = useState(false)
@@ -182,17 +216,17 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
           clearInterval(progressInterval)
           return 100
         }
-        return prev + 2
+        return prev + 5 // Faster progress
       })
-    }, 40)
+    }, 20) // Faster interval
 
     const fadeTimer = setTimeout(() => {
       setFadeOut(true)
-    }, 2200)
+    }, 1000) // Faster fade
 
     const completeTimer = setTimeout(() => {
       onComplete()
-    }, 2700)
+    }, 1400) // Faster completion
 
     return () => {
       clearInterval(progressInterval)
@@ -204,100 +238,92 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
   return (
     <div 
       className={cn(
-        "fixed inset-0 z-[100] bg-[#3E2723] flex flex-col items-center justify-center transition-opacity duration-500",
+        "fixed inset-0 z-[100] bg-[#3E2723] flex flex-col items-center justify-center transition-opacity duration-400",
         fadeOut && "opacity-0"
       )}
     >
-      {/* Logo Animation */}
-      <div className="relative mb-8 animate-[pulse_2s_ease-in-out_infinite]">
-        <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+      <div className="relative mb-6 animate-[pulse_1s_ease-in-out_infinite]">
+        <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
           <Image 
             src="/logo.svg" 
             alt="Luwak Coffee Logo" 
-            width={80} 
-            height={80} 
-            className="object-contain animate-[fadeIn_0.5s_ease-out] md:w-[100px] md:h-[100px]"
+            width={70} 
+            height={70} 
+            className="object-contain animate-[fadeIn_0.3s_ease-out] md:w-[90px] md:h-[90px]"
             priority
           />
         </div>
-        {/* Glow Effect */}
         <div className="absolute inset-0 rounded-2xl bg-[#D4AF37]/20 blur-xl animate-pulse" />
       </div>
 
-      {/* Brand Name */}
-      <h1 className="text-2xl md:text-3xl font-bold text-[#D4AF37] mb-2 animate-[fadeIn_0.5s_ease-out_0.2s_both]">
+      <h1 className="text-xl md:text-2xl font-bold text-[#D4AF37] mb-1 animate-[fadeIn_0.3s_ease-out]">
         Luwak Coffee
       </h1>
-      <p className="text-white/70 text-sm md:text-base mb-8 animate-[fadeIn_0.5s_ease-out_0.4s_both]">
+      <p className="text-white/70 text-xs md:text-sm mb-6 animate-[fadeIn_0.3s_ease-out]">
         Addis Ababa
       </p>
 
-      {/* Progress Bar */}
-      <div className="w-48 md:w-64 h-1 bg-white/20 rounded-full overflow-hidden animate-[fadeIn_0.5s_ease-out_0.6s_both]">
+      <div className="w-40 md:w-56 h-1 bg-white/20 rounded-full overflow-hidden">
         <div 
-          className="h-full bg-[#D4AF37] transition-all duration-100 ease-out rounded-full"
+          className="h-full bg-[#D4AF37] transition-all duration-75 ease-out rounded-full"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* Loading Text */}
-      <p className="text-white/50 text-xs mt-4 animate-[fadeIn_0.5s_ease-out_0.8s_both]">
+      <p className="text-white/50 text-xs mt-3">
         Beyond Solution RMS
       </p>
-
-      {/* Coffee steam animation */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="flex gap-2 opacity-30">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-1 h-8 bg-white/40 rounded-full animate-[steam_2s_ease-in-out_infinite]"
-              style={{ animationDelay: `${i * 0.3}s` }}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
 
 // Offline Screen Component
 function OfflineScreen({ onRetry }: { onRetry: () => void }) {
+  const [retrying, setRetrying] = useState(false)
+
+  const handleRetry = () => {
+    setRetrying(true)
+    setTimeout(() => {
+      setRetrying(false)
+      onRetry()
+    }, 1500)
+  }
+
   return (
     <div className="fixed inset-0 z-[100] bg-[#3E2723] flex flex-col items-center justify-center p-6">
-      {/* Logo */}
-      <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
+      <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
         <Image 
           src="/logo.svg" 
           alt="Luwak Coffee Logo" 
-          width={80} 
-          height={80} 
-          className="object-contain opacity-50 md:w-[100px] md:h-[100px]"
+          width={70} 
+          height={70} 
+          className="object-contain opacity-50 md:w-[90px] md:h-[90px]"
           priority
         />
       </div>
 
-      {/* Offline Icon */}
-      <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-        <WifiOff className="w-8 h-8 text-red-400" />
+      <div className="w-14 h-14 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+        <WifiOff className="w-7 h-7 text-red-400" />
       </div>
 
-      {/* Message */}
-      <h2 className="text-xl md:text-2xl font-bold text-white mb-2 text-center">Poor Network</h2>
-      <p className="text-white/60 text-sm md:text-base text-center mb-6 max-w-xs">
-        Unable to connect to the server. Please check your internet connection and try again.
+      <h2 className="text-lg md:text-xl font-bold text-white mb-2 text-center">Poor Network</h2>
+      <p className="text-white/60 text-sm text-center mb-6 max-w-xs">
+        Unable to connect to the server. Please check your connection.
       </p>
 
-      {/* Retry Button */}
       <button
-        onClick={onRetry}
-        className="flex items-center gap-2 px-6 py-3 bg-[#D4AF37] text-[#3E2723] font-semibold rounded-lg hover:bg-[#C9A432] active:bg-[#B89428] transition-colors"
+        onClick={handleRetry}
+        disabled={retrying}
+        className="flex items-center gap-2 px-6 py-3 bg-[#D4AF37] text-[#3E2723] font-semibold rounded-lg hover:bg-[#C9A432] active:bg-[#B89428] transition-colors disabled:opacity-70"
       >
-        <RefreshCw className="w-5 h-5" />
-        Try Again
+        {retrying ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <RefreshCw className="w-5 h-5" />
+        )}
+        {retrying ? "Connecting..." : "Try Again"}
       </button>
 
-      {/* Brand */}
       <p className="absolute bottom-6 text-white/30 text-xs">
         Beyond Solution RMS
       </p>
@@ -309,10 +335,154 @@ function OfflineScreen({ onRetry }: { onRetry: () => void }) {
 function LoadingOverlay({ message = "Loading..." }: { message?: string }) {
   return (
     <div className="fixed inset-0 z-[90] bg-[#3E2723]/90 flex flex-col items-center justify-center backdrop-blur-sm">
-      <div className="w-16 h-16 rounded-xl bg-white/10 flex items-center justify-center mb-4 animate-pulse">
-        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+      <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center mb-4 animate-pulse">
+        <Loader2 className="w-7 h-7 text-[#D4AF37] animate-spin" />
       </div>
       <p className="text-white/80 text-sm">{message}</p>
+    </div>
+  )
+}
+
+// QR Code Modal Component
+function QRCodeModal({ onClose, menuUrl }: { onClose: () => void; menuUrl: string }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4" onClick={onClose}>
+      <div 
+        className="bg-white rounded-2xl w-full max-w-sm p-6 animate-[scaleIn_0.2s_ease-out]"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[#3E2723]">Menu QR Code</h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-6 flex flex-col items-center mb-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
+            <QRCodeSVG 
+              value={menuUrl}
+              size={180}
+              level="H"
+              includeMargin={false}
+              bgColor="#FFFFFF"
+              fgColor="#3E2723"
+            />
+          </div>
+          <p className="text-sm text-gray-600 text-center">
+            Scan to view our digital menu
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              const svg = document.querySelector('.qr-code-svg')
+              if (svg) {
+                const svgData = new XMLSerializer().serializeToString(svg)
+                const canvas = document.createElement('canvas')
+                const ctx = canvas.getContext('2d')
+                const img = new window.Image()
+                img.crossOrigin = "anonymous"
+                img.onload = () => {
+                  canvas.width = img.width
+                  canvas.height = img.height
+                  ctx?.drawImage(img, 0, 0)
+                  const link = document.createElement('a')
+                  link.download = 'luwak-coffee-menu-qr.png'
+                  link.href = canvas.toDataURL()
+                  link.click()
+                }
+                img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+              }
+            }}
+            className="flex-1 py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 active:bg-gray-300 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Reset Confirmation Modal
+function ResetConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  const [confirmText, setConfirmText] = useState("")
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4" onClick={onCancel}>
+      <div 
+        className="bg-white rounded-2xl w-full max-w-md p-6 animate-[scaleIn_0.2s_ease-out]"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-[#3E2723]">Reset All Data?</h3>
+            <p className="text-sm text-gray-500">This action cannot be undone</p>
+          </div>
+        </div>
+
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <p className="text-sm text-red-800 mb-2">
+            This will reset all data including:
+          </p>
+          <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+            <li>All employee records</li>
+            <li>Inventory data</li>
+            <li>Menu items and prices</li>
+            <li>Supplier information</li>
+          </ul>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Type <span className="font-bold text-red-600">RESET</span> to confirm
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            placeholder="Type RESET here"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 active:bg-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={confirmText !== "RESET"}
+            className={cn(
+              "flex-1 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2",
+              confirmText === "RESET"
+                ? "bg-red-600 text-white hover:bg-red-700 active:bg-red-800"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            )}
+          >
+            <RotateCcw className="w-4 h-4" />
+            Reset Data
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -344,24 +514,37 @@ export default function POSSystem() {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees)
   const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory)
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers)
   
   // Modal States
   const [showEmployeeModal, setShowEmployeeModal] = useState(false)
   const [showInventoryModal, setShowInventoryModal] = useState(false)
   const [showMenuModal, setShowMenuModal] = useState(false)
+  const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [showPayrollModal, setShowPayrollModal] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [editingInventoryItem, setEditingInventoryItem] = useState<InventoryItem | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+  const [viewingPayroll, setViewingPayroll] = useState<Employee | null>(null)
+  
+  // Employee Tab State
+  const [employeeTab, setEmployeeTab] = useState<"employees" | "payroll">("employees")
   
   // Form States
   const [employeeForm, setEmployeeForm] = useState({
-    name: "", role: "cashier" as UserRole, email: "", phone: "", status: "active" as "active" | "inactive", shift: "morning" as "morning" | "afternoon" | "evening"
+    name: "", role: "cashier" as UserRole, email: "", phone: "", status: "active" as "active" | "inactive", shift: "morning" as "morning" | "afternoon" | "evening", salary: 0, bankAccount: "", hireDate: ""
   })
   const [inventoryForm, setInventoryForm] = useState({
     name: "", stock: 0, unit: "", minStock: 0, maxStock: 0, costPerUnit: 0, supplier: ""
   })
   const [productForm, setProductForm] = useState({
     name: "", nameAmharic: "", price: 0, category: "Signature Luwak", isActive: true
+  })
+  const [supplierForm, setSupplierForm] = useState({
+    name: "", contact: "", email: "", phone: "", address: "", items: "", status: "Active" as "Active" | "Inactive", paymentTerms: ""
   })
   
   // Search States
@@ -373,7 +556,6 @@ export default function POSSystem() {
     const handleOnline = () => setIsOffline(false)
     const handleOffline = () => setIsOffline(true)
 
-    // Check initial status
     if (typeof window !== 'undefined' && !navigator.onLine) {
       setIsOffline(true)
     }
@@ -402,23 +584,22 @@ export default function POSSystem() {
   }, [])
 
   // Navigation items based on role
-  const getNavItems = () => {
+  const getNavItems = useCallback(() => {
     const allItems = [
       { id: "pos", name: "POS", icon: <ShoppingCart className="w-5 h-5" />, roles: ["admin", "cashier", "waiter"] },
       { id: "inventory", name: "Inventory Tracker", icon: <Package className="w-5 h-5" />, roles: ["admin", "inventory"] },
       { id: "suppliers", name: "Addis Supplier Logs", icon: <Truck className="w-5 h-5" />, roles: ["admin", "inventory"] },
       { id: "reports", name: "ERCA VAT Reports", icon: <FileText className="w-5 h-5" />, roles: ["admin"] },
       { id: "analytics", name: "Product Analytics", icon: <BarChart3 className="w-5 h-5" />, roles: ["admin"] },
-      { id: "employees", name: "Employee Management", icon: <Users className="w-5 h-5" />, roles: ["admin"] },
+      { id: "employees", name: "Employees & Payroll", icon: <Users className="w-5 h-5" />, roles: ["admin"] },
       { id: "menu", name: "Menu Management", icon: <UtensilsCrossed className="w-5 h-5" />, roles: ["admin"] },
     ]
     return allItems.filter(item => item.roles.includes(currentRole))
-  }
+  }, [currentRole])
 
   const navItems = getNavItems()
 
   const filteredProducts = products.filter(p => p.category === activeCategory && (currentRole === "admin" || p.isActive))
-  const activeProducts = products.filter(p => p.isActive)
 
   // Cart Functions
   const addToCart = (product: Product) => {
@@ -470,21 +651,21 @@ export default function POSSystem() {
         setTimeout(() => {
           clearCart()
           setMobileCartOpen(false)
-        }, 2500)
-      }, 1500)
+        }, 2000)
+      }, 1200)
     }
   }
 
   // Employee Functions
   const openAddEmployee = () => {
     setEditingEmployee(null)
-    setEmployeeForm({ name: "", role: "cashier", email: "", phone: "", status: "active", shift: "morning" })
+    setEmployeeForm({ name: "", role: "cashier", email: "", phone: "", status: "active", shift: "morning", salary: 0, bankAccount: "", hireDate: new Date().toISOString().split('T')[0] })
     setShowEmployeeModal(true)
   }
 
   const openEditEmployee = (emp: Employee) => {
     setEditingEmployee(emp)
-    setEmployeeForm({ name: emp.name, role: emp.role, email: emp.email, phone: emp.phone, status: emp.status, shift: emp.shift })
+    setEmployeeForm({ name: emp.name, role: emp.role, email: emp.email, phone: emp.phone, status: emp.status, shift: emp.shift, salary: emp.salary, bankAccount: emp.bankAccount, hireDate: emp.hireDate })
     setShowEmployeeModal(true)
   }
 
@@ -560,6 +741,48 @@ export default function POSSystem() {
     setProducts(prev => prev.filter(p => p.id !== id))
   }
 
+  // Supplier Functions
+  const openAddSupplier = () => {
+    setEditingSupplier(null)
+    setSupplierForm({ name: "", contact: "", email: "", phone: "", address: "", items: "", status: "Active", paymentTerms: "" })
+    setShowSupplierModal(true)
+  }
+
+  const openEditSupplier = (sup: Supplier) => {
+    setEditingSupplier(sup)
+    setSupplierForm({ name: sup.name, contact: sup.contact, email: sup.email, phone: sup.phone, address: sup.address, items: sup.items, status: sup.status, paymentTerms: sup.paymentTerms })
+    setShowSupplierModal(true)
+  }
+
+  const saveSupplier = () => {
+    if (editingSupplier) {
+      setSuppliers(prev => prev.map(s => s.id === editingSupplier.id ? { ...s, ...supplierForm, lastOrder: s.lastOrder, totalOrders: s.totalOrders } : s))
+    } else {
+      const newSup: Supplier = { id: `sup${Date.now()}`, ...supplierForm, lastOrder: "Not yet", totalOrders: 0 }
+      setSuppliers(prev => [...prev, newSup])
+    }
+    setShowSupplierModal(false)
+  }
+
+  const deleteSupplier = (id: string) => {
+    setSuppliers(prev => prev.filter(s => s.id !== id))
+  }
+
+  // Reset Data Function
+  const handleResetData = () => {
+    setIsLoading(true)
+    setLoadingMessage("Resetting data...")
+    setTimeout(() => {
+      setProducts(initialProducts)
+      setEmployees(initialEmployees)
+      setInventory(initialInventory)
+      setSuppliers(initialSuppliers)
+      setCart([])
+      setShowResetModal(false)
+      setIsLoading(false)
+    }, 1500)
+  }
+
   // Analytics Helpers
   const getLowPerformingProducts = () => {
     return products.filter(p => p.isActive && p.lastWeekOrders < 10).sort((a, b) => a.lastWeekOrders - b.lastWeekOrders)
@@ -580,6 +803,11 @@ export default function POSSystem() {
     return "good"
   }
 
+  // Payroll calculations
+  const calculateMonthlyPayroll = () => {
+    return employees.filter(e => e.status === "active").reduce((sum, e) => sum + e.salary, 0)
+  }
+
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 
@@ -593,15 +821,12 @@ export default function POSSystem() {
   )
 
   const handleRetry = () => {
-    setIsLoading(true)
-    setLoadingMessage("Reconnecting...")
-    setTimeout(() => {
-      setIsLoading(false)
-      if (navigator.onLine) {
-        setIsOffline(false)
-      }
-    }, 2000)
+    if (navigator.onLine) {
+      setIsOffline(false)
+    }
   }
+
+  const menuUrl = typeof window !== 'undefined' ? `${window.location.origin}/menu` : 'https://luwak-coffee.et/menu'
 
   // Show splash screen
   if (showSplash) {
@@ -618,10 +843,21 @@ export default function POSSystem() {
       {/* Loading Overlay */}
       {isLoading && <LoadingOverlay message={loadingMessage} />}
 
+      {/* QR Modal */}
+      {showQRModal && <QRCodeModal onClose={() => setShowQRModal(false)} menuUrl={menuUrl} />}
+
+      {/* Reset Confirmation Modal */}
+      {showResetModal && (
+        <ResetConfirmModal 
+          onConfirm={handleResetData} 
+          onCancel={() => setShowResetModal(false)} 
+        />
+      )}
+
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden animate-[fadeIn_0.2s_ease-out]"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -647,7 +883,7 @@ export default function POSSystem() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -656,7 +892,7 @@ export default function POSSystem() {
                 if (window.innerWidth < 1024) setSidebarOpen(false)
               }}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-left min-h-[48px]",
+                "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-left min-h-[48px] active:scale-[0.98]",
                 activeNav === item.id
                   ? "bg-[#D4AF37] text-[#3E2723] font-semibold"
                   : "text-white/80 hover:bg-[#5D4037] hover:text-white active:bg-[#4D3027]"
@@ -666,6 +902,27 @@ export default function POSSystem() {
               {sidebarOpen && <span className="text-sm truncate">{item.name}</span>}
             </button>
           ))}
+
+          {/* Admin Quick Actions */}
+          {currentRole === "admin" && sidebarOpen && (
+            <div className="pt-4 mt-4 border-t border-[#5D4037]">
+              <p className="px-3 mb-2 text-xs text-white/50 uppercase tracking-wider">Quick Actions</p>
+              <button
+                onClick={() => setShowQRModal(true)}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-[#5D4037] transition-colors min-h-[48px] active:scale-[0.98]"
+              >
+                <QrCode className="w-5 h-5" />
+                <span className="text-sm">Menu QR Code</span>
+              </button>
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors min-h-[48px] active:scale-[0.98]"
+              >
+                <RotateCcw className="w-5 h-5" />
+                <span className="text-sm">Reset Data</span>
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* User Section with Role Switcher */}
@@ -691,7 +948,7 @@ export default function POSSystem() {
 
             {/* Role Dropdown */}
             {showRoleSwitcher && sidebarOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#5D4037] rounded-lg shadow-xl overflow-hidden">
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#5D4037] rounded-lg shadow-xl overflow-hidden animate-[slideUp_0.2s_ease-out]">
                 <div className="p-2 text-xs text-white/60 border-b border-[#3E2723]">Switch Role</div>
                 {(["admin", "cashier", "waiter", "inventory"] as UserRole[]).map((role) => (
                   <button
@@ -757,6 +1014,15 @@ export default function POSSystem() {
                 <AlertTriangle className="w-4 h-4 text-red-500" />
                 <span className="text-xs text-red-700">{getLowStockItems().length} items low stock</span>
               </div>
+            )}
+            {/* Mobile QR Button for Admin */}
+            {currentRole === "admin" && (
+              <button 
+                onClick={() => setShowQRModal(true)}
+                className="md:hidden p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
+              >
+                <QrCode className="w-5 h-5 text-[#3E2723]" />
+              </button>
             )}
             <div className="text-right">
               <p className="text-base md:text-lg font-semibold text-[#3E2723]">{currentTime}</p>
@@ -834,10 +1100,10 @@ export default function POSSystem() {
 
                 {/* Mobile Cart Button */}
                 {cart.length > 0 && (
-                  <div className="md:hidden fixed bottom-4 left-4 right-4 z-30">
+                  <div className="md:hidden fixed bottom-4 left-4 right-4 z-30 safe-area-bottom">
                     <button
                       onClick={() => setMobileCartOpen(true)}
-                      className="w-full bg-[#D4AF37] text-[#3E2723] py-4 rounded-xl font-semibold flex items-center justify-center gap-3 shadow-lg active:bg-[#C9A432]"
+                      className="w-full bg-[#D4AF37] text-[#3E2723] py-4 rounded-xl font-semibold flex items-center justify-center gap-3 shadow-lg active:bg-[#C9A432] active:scale-[0.98] transition-all"
                     >
                       <ShoppingCart className="w-5 h-5" />
                       <span>View Cart ({cart.length})</span>
@@ -853,7 +1119,7 @@ export default function POSSystem() {
               <div className={cn(
                 "bg-white border-l border-gray-200 flex flex-col overflow-hidden",
                 mobileCartOpen 
-                  ? "fixed inset-0 z-50 md:relative md:w-[40%] lg:w-[35%]" 
+                  ? "fixed inset-0 z-50 md:relative md:w-[40%] lg:w-[35%] animate-[slideUp_0.2s_ease-out]" 
                   : "hidden md:flex md:w-[40%] lg:w-[35%]"
               )}>
                 {/* Cart Header */}
@@ -893,7 +1159,7 @@ export default function POSSystem() {
                       {cart.map((item) => (
                         <div
                           key={item.id}
-                          className="bg-gray-50 rounded-lg p-3 flex items-center gap-3"
+                          className="bg-gray-50 rounded-lg p-3 flex items-center gap-3 animate-[fadeIn_0.2s_ease-out]"
                         >
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-[#3E2723] text-sm truncate">{item.name}</h4>
@@ -902,19 +1168,19 @@ export default function POSSystem() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => updateQuantity(item.id, -1)}
-                              className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                              className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
                             >
                               <Minus className="w-4 h-4" />
                             </button>
                             <span className="w-8 text-center font-semibold">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.id, 1)}
-                              className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                              className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
                             >
                               <Plus className="w-4 h-4" />
                             </button>
                           </div>
-                          <p className="font-semibold text-[#3E2723] w-20 text-right text-sm">
+                          <p className="font-semibold text-[#3E2723] w-16 text-right text-sm">
                             {(item.price * item.quantity).toFixed(2)}
                           </p>
                         </div>
@@ -925,7 +1191,7 @@ export default function POSSystem() {
 
                 {/* Cart Summary */}
                 {cart.length > 0 && (
-                  <div className="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
+                  <div className="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0 safe-area-bottom">
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Subtotal</span>
@@ -944,7 +1210,7 @@ export default function POSSystem() {
 
                     <button
                       onClick={() => setShowCheckout(true)}
-                      className="w-full bg-[#3E2723] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors"
+                      className="w-full bg-[#3E2723] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#2E1713] active:bg-[#1E0703] active:scale-[0.98] transition-all"
                     >
                       Checkout
                     </button>
@@ -971,7 +1237,7 @@ export default function POSSystem() {
                 {currentRole === "admin" && (
                   <button
                     onClick={openAddInventory}
-                    className="flex items-center gap-2 px-4 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors whitespace-nowrap"
+                    className="flex items-center gap-2 px-4 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors whitespace-nowrap active:scale-[0.98]"
                   >
                     <PlusCircle className="w-5 h-5" />
                     <span className="hidden sm:inline">Add Item</span>
@@ -1058,46 +1324,130 @@ export default function POSSystem() {
           {/* Supplier Logs */}
           {activeNav === "suppliers" && (
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {currentRole === "admin" && (
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={openAddSupplier}
+                    className="flex items-center gap-2 px-4 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors active:scale-[0.98]"
+                  >
+                    <PlusCircle className="w-5 h-5" />
+                    <span className="hidden sm:inline">Add Supplier</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {suppliers.map((sup) => (
+                  <div key={sup.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-semibold text-[#3E2723]">{sup.name}</h4>
+                        <p className="text-sm text-gray-500">{sup.items}</p>
+                      </div>
+                      <span className={cn(
+                        "px-2 py-1 rounded-full text-xs font-medium",
+                        sup.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                      )}>
+                        {sup.status}
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-sm text-gray-600 mb-3">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        <span>{sup.contact}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        <span>{sup.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>Last: {sup.lastOrder}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                      <span className="font-semibold text-[#D4AF37]">{sup.totalOrders.toLocaleString()} ETB</span>
+                      {currentRole === "admin" && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openEditSupplier(sup)}
+                            className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteSupplier(sup.id)}
+                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 active:bg-red-300 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="text-left px-4 md:px-6 py-4 text-sm font-semibold text-gray-700">Supplier</th>
-                        <th className="text-left px-4 md:px-6 py-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">Items</th>
-                        <th className="text-left px-4 md:px-6 py-4 text-sm font-semibold text-gray-700 hidden md:table-cell">Last Order</th>
-                        <th className="text-left px-4 md:px-6 py-4 text-sm font-semibold text-gray-700">Status</th>
-                        <th className="text-left px-4 md:px-6 py-4 text-sm font-semibold text-gray-700 hidden lg:table-cell">Amount</th>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Supplier</th>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Contact</th>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Items</th>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Last Order</th>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Status</th>
+                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Total</th>
+                        {currentRole === "admin" && (
+                          <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Actions</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {[
-                        { supplier: "Kaldi's Farm Supply", items: "Coffee Beans", lastOrder: "Dec 18, 2024", status: "Delivered", amount: 45000 },
-                        { supplier: "Addis Dairy Co.", items: "Milk, Cream", lastOrder: "Dec 20, 2024", status: "In Transit", amount: 8500 },
-                        { supplier: "Merkato Bakery Dist.", items: "Pastries", lastOrder: "Dec 21, 2024", status: "Pending", amount: 3200 },
-                        { supplier: "Import House Addis", items: "Syrups, Extracts", lastOrder: "Dec 15, 2024", status: "Delivered", amount: 12800 },
-                        { supplier: "Ethiopian Sugar Corp", items: "Sugar", lastOrder: "Dec 19, 2024", status: "Delivered", amount: 2100 },
-                      ].map((log, i) => (
-                        <tr key={i} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 md:px-6 py-4">
-                            <div className="font-medium text-[#3E2723] text-sm">{log.supplier}</div>
-                            <div className="text-xs text-gray-500 sm:hidden">{log.items}</div>
+                      {suppliers.map((sup) => (
+                        <tr key={sup.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-[#3E2723]">{sup.name}</div>
+                            <div className="text-xs text-gray-500">{sup.email}</div>
                           </td>
-                          <td className="px-4 md:px-6 py-4 text-sm text-gray-600 hidden sm:table-cell">{log.items}</td>
-                          <td className="px-4 md:px-6 py-4 text-sm text-gray-600 hidden md:table-cell">{log.lastOrder}</td>
-                          <td className="px-4 md:px-6 py-4">
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            <div>{sup.contact}</div>
+                            <div className="text-xs text-gray-500">{sup.phone}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{sup.items}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{sup.lastOrder}</td>
+                          <td className="px-6 py-4">
                             <span className={cn(
                               "px-2 py-1 rounded-full text-xs font-medium",
-                              log.status === "Delivered" && "bg-green-100 text-green-700",
-                              log.status === "In Transit" && "bg-blue-100 text-blue-700",
-                              log.status === "Pending" && "bg-yellow-100 text-yellow-700"
+                              sup.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
                             )}>
-                              {log.status}
+                              {sup.status}
                             </span>
                           </td>
-                          <td className="px-4 md:px-6 py-4 font-medium text-[#3E2723] text-sm hidden lg:table-cell">
-                            {log.amount.toLocaleString()} ETB
+                          <td className="px-6 py-4 font-medium text-[#3E2723]">
+                            {sup.totalOrders.toLocaleString()} ETB
                           </td>
+                          {currentRole === "admin" && (
+                            <td className="px-6 py-4">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => openEditSupplier(sup)}
+                                  className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => deleteSupplier(sup.id)}
+                                  className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 active:bg-red-300 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1110,7 +1460,7 @@ export default function POSSystem() {
           {/* ERCA VAT Reports */}
           {activeNav === "reports" && (
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
-              <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+              <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4 mb-6">
                 {[
                   { label: "Monthly Revenue", value: "2,450,000 ETB", change: "+12%", up: true },
                   { label: "Total VAT Collected", value: "367,500 ETB", change: "+8%", up: true },
@@ -1118,21 +1468,27 @@ export default function POSSystem() {
                   { label: "Avg. Transaction", value: "637.50 ETB", change: "-3%", up: false },
                 ].map((stat, i) => (
                   <div key={i} className="bg-white rounded-xl p-4 md:p-6 border border-gray-200">
-                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-xl md:text-2xl font-bold text-[#3E2723]">{stat.value}</p>
+                    <p className="text-xs md:text-sm text-gray-600 mb-1">{stat.label}</p>
+                    <p className="text-lg md:text-2xl font-bold text-[#3E2723]">{stat.value}</p>
                     <div className={cn(
-                      "flex items-center gap-1 text-sm mt-2",
+                      "flex items-center gap-1 text-xs md:text-sm mt-2",
                       stat.up ? "text-green-600" : "text-red-600"
                     )}>
                       {stat.up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                      <span>{stat.change} from last month</span>
+                      <span>{stat.change}</span>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-                <h3 className="font-bold text-lg text-[#3E2723] mb-4">ERCA VAT Summary</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                  <h3 className="font-bold text-lg text-[#3E2723]">ERCA VAT Summary</h3>
+                  <button className="flex items-center justify-center gap-2 px-4 py-2 bg-[#D4AF37] text-[#3E2723] rounded-lg font-semibold hover:bg-[#C9A432] active:bg-[#B89428] transition-colors active:scale-[0.98]">
+                    <Download className="w-4 h-4" />
+                    Export Report
+                  </button>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50">
@@ -1140,7 +1496,6 @@ export default function POSSystem() {
                         <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Period</th>
                         <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Sales</th>
                         <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700 hidden sm:table-cell">VAT Output</th>
-                        <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700 hidden md:table-cell">VAT Input</th>
                         <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Net VAT</th>
                       </tr>
                     </thead>
@@ -1151,25 +1506,14 @@ export default function POSSystem() {
                         { period: "Oct 2024", sales: 2320000, output: 348000, input: 122000, net: 226000 },
                       ].map((row, i) => (
                         <tr key={i}>
-                          <td className="px-4 py-3 font-medium text-sm">{row.period}</td>
+                          <td className="px-4 py-3 font-medium text-[#3E2723]">{row.period}</td>
                           <td className="px-4 py-3 text-sm">{row.sales.toLocaleString()} ETB</td>
                           <td className="px-4 py-3 text-sm hidden sm:table-cell">{row.output.toLocaleString()} ETB</td>
-                          <td className="px-4 py-3 text-sm hidden md:table-cell">{row.input.toLocaleString()} ETB</td>
-                          <td className="px-4 py-3 font-semibold text-[#D4AF37] text-sm">{row.net.toLocaleString()} ETB</td>
+                          <td className="px-4 py-3 font-medium text-[#D4AF37]">{row.net.toLocaleString()} ETB</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors text-sm">
-                    <FileText className="w-4 h-4" />
-                    Generate ERCA Report
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm">
-                    <Receipt className="w-4 h-4" />
-                    Export to CSV
-                  </button>
                 </div>
               </div>
             </div>
@@ -1178,16 +1522,16 @@ export default function POSSystem() {
           {/* Product Analytics */}
           {activeNav === "analytics" && (
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
-              <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-2 mb-6">
-                {/* Low Performing Products - Waste Risk */}
+              <div className="grid gap-6 lg:grid-cols-2 mb-6">
+                {/* Low Performing Products */}
                 <div className="bg-white rounded-xl border border-red-200 p-4 md:p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <TrendingDown className="w-5 h-5 text-red-500" />
-                    <h3 className="font-bold text-lg text-[#3E2723]">Waste Risk - Low Orders</h3>
+                    <h3 className="font-bold text-lg text-[#3E2723]">Waste Risk Items</h3>
                   </div>
-                  <p className="text-sm text-gray-600 mb-4">Products with less than 10 weekly orders</p>
-                  <div className="space-y-3">
-                    {getLowPerformingProducts().slice(0, 5).map((prod) => (
+                  <p className="text-sm text-gray-600 mb-4">Products with less than 10 orders this week</p>
+                  <div className="space-y-3 max-h-72 overflow-y-auto">
+                    {getLowPerformingProducts().map((prod) => (
                       <div key={prod.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                         <div>
                           <p className="font-medium text-[#3E2723] text-sm">{prod.name}</p>
@@ -1195,15 +1539,10 @@ export default function POSSystem() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-red-600 text-sm">{prod.lastWeekOrders} orders/week</p>
-                          <p className="text-xs text-gray-500">Total: {prod.totalOrders}</p>
+                          <p className="text-xs text-gray-500">Action: Promote or Remove</p>
                         </div>
                       </div>
                     ))}
-                  </div>
-                  <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Recommendation:</strong> Consider removing or promoting these items to reduce waste.
-                    </p>
                   </div>
                 </div>
 
@@ -1227,16 +1566,11 @@ export default function POSSystem() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-green-600 text-sm">{prod.lastWeekOrders} orders/week</p>
+                          <p className="font-semibold text-green-600 text-sm">{prod.lastWeekOrders} orders</p>
                           <p className="text-xs text-gray-500">{(prod.lastWeekOrders * prod.price).toLocaleString()} ETB</p>
                         </div>
                       </div>
                     ))}
-                  </div>
-                  <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-800">
-                      <strong>Tip:</strong> Ensure adequate stock for these high-demand items.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -1263,98 +1597,225 @@ export default function POSSystem() {
             </div>
           )}
 
-          {/* Employee Management */}
+          {/* Employee Management with Payroll */}
           {activeNav === "employees" && (
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search employees..."
-                    value={employeeSearch}
-                    onChange={(e) => setEmployeeSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
-                  />
-                </div>
+              {/* Tabs */}
+              <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide">
                 <button
-                  onClick={openAddEmployee}
-                  className="flex items-center gap-2 px-4 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors whitespace-nowrap"
+                  onClick={() => setEmployeeTab("employees")}
+                  className={cn(
+                    "px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all min-h-[40px] active:scale-95",
+                    employeeTab === "employees"
+                      ? "bg-[#3E2723] text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                  )}
                 >
-                  <PlusCircle className="w-5 h-5" />
-                  <span className="hidden sm:inline">Add Employee</span>
+                  Employees
+                </button>
+                <button
+                  onClick={() => setEmployeeTab("payroll")}
+                  className={cn(
+                    "px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all min-h-[40px] active:scale-95",
+                    employeeTab === "payroll"
+                      ? "bg-[#3E2723] text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                  )}
+                >
+                  Payroll
                 </button>
               </div>
 
-              {/* Employee Stats */}
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
-                {(["admin", "cashier", "waiter", "inventory"] as UserRole[]).map((role) => (
-                  <div key={role} className="bg-white rounded-xl p-4 border border-gray-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      {roleIcons[role]}
-                      <span className="text-sm text-gray-600">{roleLabels[role]}s</span>
+              {employeeTab === "employees" && (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search employees..."
+                        value={employeeSearch}
+                        onChange={(e) => setEmployeeSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+                      />
                     </div>
-                    <p className="text-2xl font-bold text-[#3E2723]">
-                      {employees.filter(e => e.role === role && e.status === "active").length}
-                    </p>
-                    <p className="text-xs text-gray-500">active</p>
+                    <button
+                      onClick={openAddEmployee}
+                      className="flex items-center gap-2 px-4 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors whitespace-nowrap active:scale-[0.98]"
+                    >
+                      <PlusCircle className="w-5 h-5" />
+                      <span className="hidden sm:inline">Add Employee</span>
+                    </button>
                   </div>
-                ))}
-              </div>
 
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredEmployees.map((emp) => (
-                  <div
-                    key={emp.id}
-                    className={cn(
-                      "bg-white rounded-xl p-4 border-2 transition-all",
-                      emp.status === "active" ? "border-gray-200" : "border-gray-100 opacity-60"
-                    )}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-[#3E2723] flex items-center justify-center text-white font-semibold">
-                          {emp.name.split(' ').map(n => n[0]).join('')}
+                  {/* Employee Stats */}
+                  <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+                    {(["admin", "cashier", "waiter", "inventory"] as UserRole[]).map((role) => (
+                      <div key={role} className="bg-white rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          {roleIcons[role]}
+                          <span className="text-sm text-gray-600">{roleLabels[role]}s</span>
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-[#3E2723]">{emp.name}</h4>
-                          <div className="flex items-center gap-1 text-sm text-gray-500">
-                            {roleIcons[emp.role]}
-                            <span>{roleLabels[emp.role]}</span>
+                        <p className="text-2xl font-bold text-[#3E2723]">
+                          {employees.filter(e => e.role === role && e.status === "active").length}
+                        </p>
+                        <p className="text-xs text-gray-500">active</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredEmployees.map((emp) => (
+                      <div
+                        key={emp.id}
+                        className={cn(
+                          "bg-white rounded-xl p-4 border-2 transition-all",
+                          emp.status === "active" ? "border-gray-200" : "border-gray-100 opacity-60"
+                        )}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-[#3E2723] flex items-center justify-center text-white font-semibold">
+                              {emp.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-[#3E2723]">{emp.name}</h4>
+                              <div className="flex items-center gap-1 text-sm text-gray-500">
+                                {roleIcons[emp.role]}
+                                <span>{roleLabels[emp.role]}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-1 rounded-full text-xs font-medium",
+                            emp.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                          )}>
+                            {emp.status}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 text-sm text-gray-600 mb-4">
+                          <p className="truncate">{emp.email}</p>
+                          <p>{emp.phone}</p>
+                          <div className="flex justify-between">
+                            <span className="capitalize">Shift: {emp.shift}</span>
+                            <span className="font-semibold text-[#D4AF37]">{emp.salary.toLocaleString()} ETB</span>
                           </div>
                         </div>
+
+                        <div className="flex gap-2 pt-3 border-t border-gray-200">
+                          <button
+                            onClick={() => openEditEmployee(emp)}
+                            className="flex-1 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setViewingPayroll(emp)
+                              setShowPayrollModal(true)
+                            }}
+                            className="px-4 py-2 text-sm bg-[#D4AF37]/10 text-[#D4AF37] rounded-lg hover:bg-[#D4AF37]/20 active:bg-[#D4AF37]/30 transition-colors"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteEmployee(emp.id)}
+                            className="px-4 py-2 text-sm bg-red-100 text-red-600 rounded-lg hover:bg-red-200 active:bg-red-300 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <span className={cn(
-                        "px-2 py-1 rounded-full text-xs font-medium",
-                        emp.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                      )}>
-                        {emp.status}
-                      </span>
-                    </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
-                    <div className="space-y-2 text-sm text-gray-600 mb-4">
-                      <p className="truncate">{emp.email}</p>
-                      <p>{emp.phone}</p>
-                      <p className="capitalize">Shift: {emp.shift}</p>
+              {employeeTab === "payroll" && (
+                <>
+                  {/* Payroll Summary */}
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-6">
+                    <div className="bg-white rounded-xl p-4 md:p-6 border border-gray-200">
+                      <p className="text-sm text-gray-600 mb-1">Monthly Payroll</p>
+                      <p className="text-2xl font-bold text-[#D4AF37]">{calculateMonthlyPayroll().toLocaleString()} ETB</p>
+                      <p className="text-xs text-gray-500 mt-1">{employees.filter(e => e.status === "active").length} active employees</p>
                     </div>
-
-                    <div className="flex gap-2 pt-3 border-t border-gray-200">
-                      <button
-                        onClick={() => openEditEmployee(emp)}
-                        className="flex-1 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteEmployee(emp.id)}
-                        className="px-4 py-2 text-sm bg-red-100 text-red-600 rounded-lg hover:bg-red-200 active:bg-red-300 transition-colors"
-                      >
-                        Delete
-                      </button>
+                    <div className="bg-white rounded-xl p-4 md:p-6 border border-gray-200">
+                      <p className="text-sm text-gray-600 mb-1">Next Payday</p>
+                      <p className="text-2xl font-bold text-[#3E2723]">Dec 30, 2024</p>
+                      <p className="text-xs text-gray-500 mt-1">8 days remaining</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 md:p-6 border border-gray-200">
+                      <p className="text-sm text-gray-600 mb-1">Avg. Salary</p>
+                      <p className="text-2xl font-bold text-[#3E2723]">
+                        {Math.round(calculateMonthlyPayroll() / employees.filter(e => e.status === "active").length).toLocaleString()} ETB
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">per employee</p>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Payroll List */}
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                      <h3 className="font-bold text-[#3E2723]">Payroll Details</h3>
+                      <button className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-[#3E2723] rounded-lg font-semibold hover:bg-[#C9A432] active:bg-[#B89428] transition-colors text-sm active:scale-[0.98]">
+                        <Download className="w-4 h-4" />
+                        Export
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Employee</th>
+                            <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700 hidden sm:table-cell">Role</th>
+                            <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700 hidden md:table-cell">Bank Account</th>
+                            <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Salary</th>
+                            <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {employees.map((emp) => (
+                            <tr key={emp.id} className={cn("hover:bg-gray-50 transition-colors", emp.status === "inactive" && "opacity-50")}>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-[#3E2723] flex items-center justify-center text-white text-xs font-semibold">
+                                    {emp.name.split(' ').map(n => n[0]).join('')}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-[#3E2723] text-sm">{emp.name}</p>
+                                    <p className="text-xs text-gray-500 sm:hidden">{roleLabels[emp.role]}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">{roleLabels[emp.role]}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{emp.bankAccount}</td>
+                              <td className="px-4 py-3 font-semibold text-[#D4AF37]">{emp.salary.toLocaleString()} ETB</td>
+                              <td className="px-4 py-3">
+                                <span className={cn(
+                                  "px-2 py-1 rounded-full text-xs font-medium",
+                                  emp.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                                )}>
+                                  {emp.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-gray-50">
+                          <tr>
+                            <td colSpan={3} className="px-4 py-3 font-bold text-[#3E2723]">Total Monthly Payroll</td>
+                            <td colSpan={2} className="px-4 py-3 font-bold text-[#D4AF37] text-lg">
+                              {calculateMonthlyPayroll().toLocaleString()} ETB
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1362,13 +1823,13 @@ export default function POSSystem() {
           {activeNav === "menu" && (
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                <div className="flex items-center gap-4 overflow-x-auto pb-2 sm:pb-0">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
                   {categories.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
                       className={cn(
-                        "px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all",
+                        "px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all min-h-[40px] active:scale-95",
                         activeCategory === cat
                           ? "bg-[#3E2723] text-white"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
@@ -1378,13 +1839,22 @@ export default function POSSystem() {
                     </button>
                   ))}
                 </div>
-                <button
-                  onClick={openAddProduct}
-                  className="flex items-center gap-2 px-4 py-3 bg-[#D4AF37] text-[#3E2723] rounded-lg hover:bg-[#C9A432] active:bg-[#B89428] transition-colors whitespace-nowrap font-semibold"
-                >
-                  <PlusCircle className="w-5 h-5" />
-                  <span className="hidden sm:inline">Add Menu Item</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowQRModal(true)}
+                    className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors active:scale-[0.98]"
+                  >
+                    <QrCode className="w-5 h-5" />
+                    <span className="hidden sm:inline">QR Code</span>
+                  </button>
+                  <button
+                    onClick={openAddProduct}
+                    className="flex items-center gap-2 px-4 py-3 bg-[#D4AF37] text-[#3E2723] rounded-lg hover:bg-[#C9A432] active:bg-[#B89428] transition-colors whitespace-nowrap font-semibold active:scale-[0.98]"
+                  >
+                    <PlusCircle className="w-5 h-5" />
+                    <span className="hidden sm:inline">Add Item</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1449,8 +1919,8 @@ export default function POSSystem() {
 
       {/* Checkout Modal */}
       {showCheckout && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowCheckout(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
             {orderComplete ? (
               <div className="p-8 text-center">
                 <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center animate-[scaleIn_0.3s_ease-out]">
@@ -1510,7 +1980,7 @@ export default function POSSystem() {
                     onClick={handlePayment}
                     disabled={!selectedPayment}
                     className={cn(
-                      "w-full py-4 rounded-xl font-semibold text-lg transition-all",
+                      "w-full py-4 rounded-xl font-semibold text-lg transition-all active:scale-[0.98]",
                       selectedPayment
                         ? "bg-[#3E2723] text-white hover:bg-[#2E1713] active:bg-[#1E0703]"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -1527,8 +1997,8 @@ export default function POSSystem() {
 
       {/* Employee Modal */}
       {showEmployeeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowEmployeeModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-xl font-bold text-[#3E2723]">
                 {editingEmployee ? "Edit Employee" : "Add Employee"}
@@ -1609,9 +2079,39 @@ export default function POSSystem() {
                   </select>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary (ETB)</label>
+                  <input
+                    type="number"
+                    value={employeeForm.salary}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, salary: Number(e.target.value) })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hire Date</label>
+                  <input
+                    type="date"
+                    value={employeeForm.hireDate}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, hireDate: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account</label>
+                <input
+                  type="text"
+                  value={employeeForm.bankAccount}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, bankAccount: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  placeholder="CBE-1000234567"
+                />
+              </div>
               <button
                 onClick={saveEmployee}
-                className="w-full py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors"
+                className="w-full py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors active:scale-[0.98]"
               >
                 {editingEmployee ? "Update Employee" : "Add Employee"}
               </button>
@@ -1620,10 +2120,69 @@ export default function POSSystem() {
         </div>
       )}
 
+      {/* Payroll Detail Modal */}
+      {showPayrollModal && viewingPayroll && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowPayrollModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-[#3E2723]">Payroll Details</h3>
+              <button
+                onClick={() => setShowPayrollModal(false)}
+                className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-[#3E2723] flex items-center justify-center text-white text-xl font-semibold">
+                  {viewingPayroll.name.split(' ').map(n => n[0]).join('')}
+                </div>
+                <div>
+                  <h4 className="font-bold text-[#3E2723] text-lg">{viewingPayroll.name}</h4>
+                  <p className="text-gray-500">{roleLabels[viewingPayroll.role]}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">Monthly Salary</span>
+                  <span className="font-bold text-[#D4AF37]">{viewingPayroll.salary.toLocaleString()} ETB</span>
+                </div>
+                <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">Bank Account</span>
+                  <span className="font-medium">{viewingPayroll.bankAccount}</span>
+                </div>
+                <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">Hire Date</span>
+                  <span className="font-medium">{new Date(viewingPayroll.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                </div>
+                <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">Status</span>
+                  <span className={cn(
+                    "px-2 py-1 rounded-full text-xs font-medium",
+                    viewingPayroll.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                  )}>
+                    {viewingPayroll.status}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowPayrollModal(false)}
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 active:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Inventory Modal */}
       {showInventoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowInventoryModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-xl font-bold text-[#3E2723]">
                 {editingInventoryItem ? "Edit Inventory Item" : "Add Inventory Item"}
@@ -1697,16 +2256,20 @@ export default function POSSystem() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                <input
-                  type="text"
+                <select
                   value={inventoryForm.supplier}
                   onChange={(e) => setInventoryForm({ ...inventoryForm, supplier: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                />
+                >
+                  <option value="">Select supplier</option>
+                  {suppliers.filter(s => s.status === "Active").map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
               </div>
               <button
                 onClick={saveInventory}
-                className="w-full py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors"
+                className="w-full py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors active:scale-[0.98]"
               >
                 {editingInventoryItem ? "Update Item" : "Add Item"}
               </button>
@@ -1715,10 +2278,121 @@ export default function POSSystem() {
         </div>
       )}
 
+      {/* Supplier Modal */}
+      {showSupplierModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowSupplierModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-[#3E2723]">
+                {editingSupplier ? "Edit Supplier" : "Add Supplier"}
+              </h3>
+              <button
+                onClick={() => setShowSupplierModal(false)}
+                className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                <input
+                  type="text"
+                  value={supplierForm.name}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+                <input
+                  type="text"
+                  value={supplierForm.contact}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, contact: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={supplierForm.email}
+                    onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={supplierForm.phone}
+                    onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <input
+                  type="text"
+                  value={supplierForm.address}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Items Supplied</label>
+                <input
+                  type="text"
+                  value={supplierForm.items}
+                  onChange={(e) => setSupplierForm({ ...supplierForm, items: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  placeholder="e.g., Coffee Beans, Milk"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={supplierForm.status}
+                    onChange={(e) => setSupplierForm({ ...supplierForm, status: e.target.value as "Active" | "Inactive" })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+                  <select
+                    value={supplierForm.paymentTerms}
+                    onChange={(e) => setSupplierForm({ ...supplierForm, paymentTerms: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  >
+                    <option value="">Select terms</option>
+                    <option value="COD">COD (Cash on Delivery)</option>
+                    <option value="Net 15">Net 15</option>
+                    <option value="Net 30">Net 30</option>
+                    <option value="Net 45">Net 45</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={saveSupplier}
+                className="w-full py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors active:scale-[0.98]"
+              >
+                {editingSupplier ? "Update Supplier" : "Add Supplier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Menu/Product Modal */}
       {showMenuModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowMenuModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-xl font-bold text-[#3E2723]">
                 {editingProduct ? "Edit Menu Item" : "Add Menu Item"}
@@ -1787,7 +2461,7 @@ export default function POSSystem() {
               </div>
               <button
                 onClick={saveProduct}
-                className="w-full py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors"
+                className="w-full py-3 bg-[#3E2723] text-white rounded-lg font-semibold hover:bg-[#2E1713] active:bg-[#1E0703] transition-colors active:scale-[0.98]"
               >
                 {editingProduct ? "Update Item" : "Add Item"}
               </button>
@@ -1802,8 +2476,12 @@ export default function POSSystem() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         @keyframes scaleIn {
-          from { transform: scale(0.8); opacity: 0; }
+          from { transform: scale(0.95); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
         }
         @keyframes steam {
@@ -1816,6 +2494,9 @@ export default function POSSystem() {
         }
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
+        }
+        .safe-area-bottom {
+          padding-bottom: env(safe-area-inset-bottom, 0);
         }
       `}</style>
     </div>
