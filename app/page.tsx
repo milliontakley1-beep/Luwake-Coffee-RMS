@@ -2470,6 +2470,18 @@ export default function POSSystem() {
         </div>
       )}
 
+      <footer className="border-t border-gray-200 bg-white/80 px-4 py-3 text-center text-xs text-gray-500 backdrop-blur-sm">
+        Powered by{' '}
+        <a
+          href="https://beyond.et"
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold text-[#3E2723] transition-colors hover:text-[#D4AF37]"
+        >
+          beyond.et
+        </a>
+      </footer>
+
       {/* Custom Animations */}
       <style jsx global>{`
         @keyframes fadeIn {

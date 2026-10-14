@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: 'Restaurant Management System for Luwak Coffee Addis Ababa',
   generator: 'v0.app',
   icons: {
-    icon: '/logo.svg',
-    apple: '/logo.svg',
+    icon: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo%20favicon_-t3xF2fbG6rg78cdX1BNNYJPkOKNYSn.png',
+    apple: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo%20favicon_-t3xF2fbG6rg78cdX1BNNYJPkOKNYSn.png',
   },
 }
 
