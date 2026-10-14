@@ -29,12 +29,12 @@
   --destructive-foreground: #FFFFFF;
   --border: #E5E5E5;
   --input: #E5E5E5;
-  --ring: #D4AF37;
-  --chart-1: #3E2723;
-  --chart-2: #D4AF37;
-  --chart-3: #5D4037;
-  --chart-4: #8D6E63;
-  --chart-5: #A1887F;
+  --ring: #0000FF;
+  --chart-1: #0000FF;
+  --chart-2: #3333FF;
+  --chart-3: #6666FF;
+  --chart-4: #9999FF;
+  --chart-5: #CCCCFF;
   --radius: 0.625rem;
   --sidebar: #3E2723;
   --sidebar-foreground: #FFFFFF;
@@ -65,7 +65,7 @@
   --destructive-foreground: #FFFFFF;
   --border: #3E2723;
   --input: #3E2723;
-  --ring: #D4AF37;
+  --ring: #0000FF;
   --chart-1: #D4AF37;
   --chart-2: #8D6E63;
   --chart-3: #A1887F;
@@ -82,7 +82,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Inter', 'Geist', sans-serif;
+  --font-sans: 'Inter', var(--font-ethiopic), 'Noto Sans Ethiopic', sans-serif;
   --font-mono: 'Geist Mono', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
