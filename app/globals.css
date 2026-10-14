@@ -4,28 +4,27 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Luwak Coffee Addis Ababa Brand Colors */
-  --coffee-brown: #3E2723;
-  --coffee-brown-light: #5D4037;
-  --gold-accent: #D4AF37;
-  --gold-accent-light: #E8C547;
-  --cream: #F5F5DC;
-  --warm-white: #FAFAF8;
-  
-  --background: #FAFAF8;
-  --foreground: #3E2723;
+  /* ERP mini brand tokens */
+  --coffee-brown: #0000FF;
+  --coffee-brown-light: #3333FF;
+  --gold-accent: #0000FF;
+  --gold-accent-light: #3333FF;
+  --cream: #EFF2FF;
+  --warm-white: #F8FAFC;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
   --card: #FFFFFF;
-  --card-foreground: #3E2723;
+  --card-foreground: #0F172A;
   --popover: #FFFFFF;
-  --popover-foreground: #3E2723;
-  --primary: #3E2723;
+  --popover-foreground: #0F172A;
+  --primary: #0000FF;
   --primary-foreground: #FFFFFF;
-  --secondary: #F5F5DC;
-  --secondary-foreground: #3E2723;
-  --muted: #F5F5DC;
-  --muted-foreground: #5D4037;
-  --accent: #D4AF37;
-  --accent-foreground: #3E2723;
+  --secondary: #EFF2FF;
+  --secondary-foreground: #0000AA;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #DDE4FF;
+  --accent-foreground: #0000AA;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
   --border: #E5E5E5;
