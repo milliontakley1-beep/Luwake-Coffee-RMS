@@ -222,11 +222,11 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 
     const fadeTimer = setTimeout(() => {
       setFadeOut(true)
-    }, 1000) // Faster fade
+    }, 450) // Fast fade
 
     const completeTimer = setTimeout(() => {
       onComplete()
-    }, 1400) // Faster completion
+    }, 700) // Fast completion
 
     return () => {
       clearInterval(progressInterval)
@@ -865,7 +865,7 @@ export default function POSSystem() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed lg:relative bg-[#3E2723] text-white flex flex-col transition-all duration-300 ease-in-out z-50 h-full",
+          "fixed lg:relative bg-[#3E2723] text-white flex flex-col overflow-hidden transition-all duration-300 ease-in-out z-50 h-full",
           sidebarOpen ? "w-64 translate-x-0" : "w-0 lg:w-20 -translate-x-full lg:translate-x-0"
         )}
       >
